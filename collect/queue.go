@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	"bosun.org/metadata"
@@ -168,7 +169,14 @@ func SendDataPoints(dps []*opentsdb.DataPoint, tsdb string) (*http.Response, err
 	Add("collect.post.total_bytes", Tags, int64(buf.Len()))
 
 	if UseNtlm {
-		return ntlm.DoNTLMRequest(client, req)
+		resp, err := ntlm.DoNTLMRequest(client, req)
+
+		if resp.StatusCode == 401 {
+			slog.Errorf("Scollector unauthorized to post data points to tsdb. Terminating.")
+			os.Exit(1)
+		}
+
+		return resp, err
 	}
 
 	resp, err := client.Do(req)
